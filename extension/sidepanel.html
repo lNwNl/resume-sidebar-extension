@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>简历侧边栏</title>
+  <link rel="stylesheet" href="sidepanel.css">
+</head>
+<body>
+  <main>
+    <header>
+      <div class="settings">
+        <label>字号<select id="font-size"><option>12</option><option selected>14</option><option>16</option><option>18</option></select></label>
+        <label>外观<select id="theme"><option value="auto">跟随</option><option value="light">浅色</option><option value="dark">深色</option></select></label>
+        <label>日期<select id="date-separator"><option value="-">-</option><option value=".">.</option><option value="/">/</option></select></label>
+      </div>
+      <input id="search" type="search" placeholder="搜索字段或内容" autocomplete="off">
+    </header>
+    <section id="content" aria-live="polite"></section>
+  </main>
+  <div id="toast" role="status" hidden></div>
+  <script src="data.js"></script>
+  <script src="sidepanel.js"></script>
+</body>
+</html>

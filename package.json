@@ -1,0 +1,9 @@
+{
+  "name": "resume-sidebar-extension",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "check": "node scripts/check-public.mjs && node --check extension/background.js && node --check extension/content.js && node --check extension/data.js && node --check extension/sidepanel.js",
+    "build": "node scripts/build.mjs --out dist"
+  }
+}

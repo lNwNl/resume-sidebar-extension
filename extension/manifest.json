@@ -1,0 +1,20 @@
+{
+  "manifest_version": 3,
+  "name": "简历侧边栏",
+  "version": "1.0.3",
+  "description": "先点击网页字段，再从 Chrome 侧边栏选择简历内容填入",
+  "minimum_chrome_version": "114",
+  "permissions": ["sidePanel", "storage", "clipboardWrite"],
+  "host_permissions": ["http://*/*", "https://*/*"],
+  "background": { "service_worker": "background.js" },
+  "action": { "default_title": "打开简历侧边栏" },
+  "side_panel": { "default_path": "sidepanel.html" },
+  "content_scripts": [{
+    "matches": ["http://*/*", "https://*/*"],
+    "js": ["content.js"],
+    "run_at": "document_idle",
+    "all_frames": true,
+    "match_about_blank": true,
+    "match_origin_as_fallback": true
+  }]
+}
