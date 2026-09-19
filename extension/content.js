@@ -91,6 +91,25 @@ function displayedDate(value) {
   return match ? `${match[1]}-${match[2].padStart(2, '0')}-${match[3].padStart(2, '0')}` : null;
 }
 
+async function typeElementDate(control, iso) {
+  const wasReadOnly = control.readOnly;
+  try {
+    control.readOnly = false;
+    control.focus();
+    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(control, iso);
+    control.dispatchEvent(new InputEvent('input', { bubbles: true, inputType: 'insertText', data: iso }));
+    control.dispatchEvent(new Event('change', { bubbles: true }));
+    await pause(120);
+    control.blur();
+    await pause(120);
+    return displayedDate(control.value) === iso;
+  } catch {
+    return false;
+  } finally {
+    control.readOnly = wasReadOnly;
+  }
+}
+
 async function pickElementDate(control, field) {
   if (field.kind !== 'date' || !/^\d{4}-\d{2}-\d{2}$/.test(field.value)) {
     showError('此日期控件需要选择单个完整日期'); return false;
@@ -102,6 +121,7 @@ async function pickElementDate(control, field) {
     showError('日期无效'); return false;
   }
   if (displayedDate(control.value) === field.value) return true;
+  if (await typeElementDate(control, field.value)) return true;
 
   control.focus();
   control.click();
