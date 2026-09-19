@@ -39,10 +39,11 @@ function notice(message) {
   toastTimer = setTimeout(() => { toast.hidden = true; }, 3500);
 }
 
-async function copy(value, automatic) {
+async function copy(value, automatic, error) {
   try {
     await navigator.clipboard.writeText(value);
-    notice(automatic ? '未能自动填写，已复制；请在网页中手动粘贴' : '已复制，请在网页中手动粘贴');
+    notice(error ? `${error}；已复制到剪贴板`
+      : automatic ? '未能自动填写，已复制；请在网页中手动粘贴' : '已复制，请在网页中手动粘贴');
   } catch {
     notice('复制失败，请手动选择字段内容');
   }
@@ -59,7 +60,7 @@ async function useField(field, event) {
     result = { ok: false };
   }
   if (result?.ok) { notice('已填写'); return; }
-  await copy(result?.copyValue || preview(field), true);
+  await copy(result?.copyValue || preview(field), true, result?.error);
 }
 
 function fieldButton(field) {

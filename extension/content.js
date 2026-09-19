@@ -10,6 +10,9 @@ const supportedInputTypes = new Set([
 
 function editableFrom(node) {
   if (!(node instanceof Element)) return null;
+  const dateEditor = node.closest('.el-date-editor--date');
+  const dateInput = dateEditor?.querySelector('input.el-input__inner[readonly]');
+  if (dateInput && !dateInput.disabled && !dateEditor.classList.contains('is-disabled')) return dateInput;
   const input = node.closest('input, textarea, select, [contenteditable], [role="combobox"], '
     + '[role="listbox"], [role="radio"], [role="checkbox"]');
   if (!input || input.disabled || input.readOnly) return null;
@@ -56,6 +59,95 @@ document.addEventListener('selectionchange', () => {
 
 function showError(message) { lastError = message; }
 
+function isElementDatePicker(control) {
+  return control instanceof HTMLInputElement && control.readOnly
+    && !!control.closest('.el-date-editor--date');
+}
+
+const pause = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+async function waitFor(find, timeout = 800) {
+  const until = Date.now() + timeout;
+  let result;
+  while (!(result = find()) && Date.now() < until) await pause(25);
+  return result;
+}
+
+function visibleDatePanel() {
+  return [...document.querySelectorAll('.el-picker-panel.el-date-picker')].find((panel) =>
+    panel.getClientRects().length && getComputedStyle(panel).visibility !== 'hidden');
+}
+
+function visibleTable(panel, selector) {
+  const table = panel.querySelector(selector);
+  return table?.getClientRects().length ? table : null;
+}
+
+function displayedDate(value) {
+  const match = /^(\d{4})\D+(\d{1,2})\D+(\d{1,2})(?:日)?$/.exec(value.trim());
+  return match ? `${match[1]}-${match[2].padStart(2, '0')}-${match[3].padStart(2, '0')}` : null;
+}
+
+async function pickElementDate(control, field) {
+  if (field.kind !== 'date' || !/^\d{4}-\d{2}-\d{2}$/.test(field.value)) {
+    showError('此日期控件需要选择单个完整日期'); return false;
+  }
+  const [year, month, day] = field.value.split('-').map(Number);
+  if (new Date(year, month - 1, day).getFullYear() !== year
+    || new Date(year, month - 1, day).getMonth() !== month - 1
+    || new Date(year, month - 1, day).getDate() !== day) {
+    showError('日期无效'); return false;
+  }
+  if (displayedDate(control.value) === field.value) return true;
+
+  control.focus();
+  control.click();
+  const panel = await waitFor(visibleDatePanel);
+  if (!panel) { showError('未找到日期选择面板'); return false; }
+  const yearLabel = panel.querySelector('.el-date-picker__header-label');
+  if (!yearLabel) { showError('无法识别日期选择面板'); return false; }
+  yearLabel.click();
+  let table = await waitFor(() => visibleTable(panel, '.el-year-table'));
+  if (!table) { showError('无法打开年份选择'); return false; }
+
+  for (let attempt = 0; attempt < 30; attempt++) {
+    const first = Number(table.querySelector('td.available .cell')?.textContent.trim());
+    if (!Number.isInteger(first)) break;
+    if (year >= first && year < first + 10) {
+      const cell = [...table.querySelectorAll('td.available:not(.disabled) .cell')]
+        .find((item) => Number(item.textContent.trim()) === year);
+      if (!cell) { showError('目标年份不可选'); return false; }
+      cell.click();
+      table = await waitFor(() => visibleTable(panel, '.el-month-table'));
+      if (!table) { showError('无法打开月份选择'); return false; }
+      const months = [...table.querySelectorAll('td')];
+      const monthCell = months[month - 1];
+      if (!monthCell || monthCell.classList.contains('disabled')) {
+        showError('目标月份不可选'); return false;
+      }
+      monthCell.querySelector('.cell')?.click();
+      table = await waitFor(() => visibleTable(panel, '.el-date-table'));
+      if (!table) { showError('无法打开日期选择'); return false; }
+      const dayCell = [...table.querySelectorAll('td.available:not(.disabled)')]
+        .find((item) => Number(item.textContent.trim()) === day);
+      if (!dayCell) { showError('目标日期不可选'); return false; }
+      dayCell.click();
+      if (await waitFor(() => displayedDate(control.value) === field.value)) return true;
+      showError('网站未确认所选日期，请检查或手动选择'); return false;
+    }
+    const direction = year < first ? 'prev' : 'next';
+    const button = panel.querySelector(`.el-date-picker__${direction}-btn.el-icon-d-arrow-${direction === 'prev' ? 'left' : 'right'}`);
+    if (!button) break;
+    button.click();
+    table = await waitFor(() => {
+      const current = visibleTable(panel, '.el-year-table');
+      return Number(current?.querySelector('td.available .cell')?.textContent.trim()) !== first ? current : null;
+    });
+    if (!table) break;
+  }
+  showError('无法定位目标年份'); return false;
+}
+
 function dateFormat(iso, control) {
   const placeholder = control?.getAttribute('placeholder') || '';
   const hint = [placeholder, control?.getAttribute('aria-label') || '', control?.name || '',
@@ -76,7 +168,8 @@ function dateFormat(iso, control) {
 function resolvedValue(field, control) {
   if (field.kind === 'text') return field.value;
   if (field.kind === 'period') {
-    if (control instanceof HTMLInputElement && ['date', 'month', 'number'].includes(control.type)
+    if (isElementDatePicker(control)
+      || control instanceof HTMLInputElement && ['date', 'month', 'number'].includes(control.type)
       || control instanceof HTMLSelectElement
       || control instanceof HTMLInputElement && ['radio', 'checkbox'].includes(control.type)
       || ['combobox', 'listbox', 'radio', 'checkbox'].includes(control.getAttribute('role'))) {
@@ -198,6 +291,7 @@ async function writeValue(field) {
   }
   const value = resolvedValue(field, control);
   if (value === null) return false;
+  if (isElementDatePicker(control)) return pickElementDate(control, field);
   if (control instanceof HTMLInputElement && ['radio', 'checkbox'].includes(control.type)) {
     const match = checkedMatch(control, field, value);
     if (!match) { showError('没有唯一匹配的选项'); return false; }
