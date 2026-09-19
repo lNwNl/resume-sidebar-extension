@@ -28,25 +28,28 @@ function signal(cmd) {
   chrome.runtime.sendMessage({ cmd }).catch(() => {});
 }
 
+function rememberTarget(candidate) {
+  if (target === candidate) return;
+  target = candidate;
+  editorRange = null;
+  signal(candidate ? 'target-focus' : 'target-clear');
+}
+
+function isPickerPanelNode(node) {
+  return isElementDatePicker(target) && node instanceof Element
+    && !!node.closest('.el-picker-panel, [role="dialog"]');
+}
+
 document.addEventListener('focusin', (event) => {
   const candidate = editableFrom(event.target);
-  if (candidate) {
-    target = candidate;
-    editorRange = null;
-    signal('target-focus');
-  } else {
-    target = null;
-    editorRange = null;
-    signal('target-clear');
-  }
+  if (candidate) rememberTarget(candidate);
+  else if (!isPickerPanelNode(event.target)) rememberTarget(null);
 }, true);
 
 document.addEventListener('pointerdown', (event) => {
-  if (!editableFrom(event.target)) {
-    target = null;
-    editorRange = null;
-    signal('target-clear');
-  }
+  const candidate = editableFrom(event.target);
+  if (candidate) rememberTarget(candidate);
+  else if (!isPickerPanelNode(event.target)) rememberTarget(null);
 }, true);
 
 document.addEventListener('selectionchange', () => {

@@ -32,20 +32,21 @@ function preview(field) {
   return field.value;
 }
 
-function notice(message) {
+function notice(message, duration = 3500) {
   toast.textContent = message;
   toast.hidden = false;
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => { toast.hidden = true; }, 3500);
+  toastTimer = setTimeout(() => { toast.hidden = true; }, duration);
 }
 
 async function copy(value, automatic, error) {
   try {
     await navigator.clipboard.writeText(value);
     notice(error ? `${error}；已复制到剪贴板`
-      : automatic ? '未能自动填写，已复制；请在网页中手动粘贴' : '已复制，请在网页中手动粘贴');
+      : automatic ? '未能自动填写，已复制；请在网页中手动粘贴' : '已复制，请在网页中手动粘贴',
+    error ? 10000 : 3500);
   } catch {
-    notice('复制失败，请手动选择字段内容');
+    notice(error || '复制失败，请手动选择字段内容', error ? 10000 : 3500);
   }
 }
 
