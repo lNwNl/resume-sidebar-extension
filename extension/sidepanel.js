@@ -105,12 +105,6 @@ function groupDetails(group) {
   if (group.fields) body.append(fieldsBlock(group.fields));
   else group.items.forEach((item) => body.append(itemDetails(item)));
   details.append(summary, body);
-  details.addEventListener('toggle', () => {
-    if (!details.open || !group.items) return;
-    const items = details.querySelectorAll(':scope > .group-body > .item');
-    items.forEach((item) => { item.open = false; });
-    if (items[0]) items[0].open = true;
-  });
   return details;
 }
 
